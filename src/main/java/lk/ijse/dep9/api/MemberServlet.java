@@ -80,6 +80,34 @@ public class MemberServlet extends HttpServlet2 {
         }
     }
 
+    private void searchMembers(String query, HttpServletResponse response) throws IOException {
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM member WHERE id LIKE ? OR name LIKE ? OR address LIKE ? OR contact LIKE ?");
+            query = "%" + query + "%";
+            stm.setString(1, query);
+            stm.setString(2, query);
+            stm.setString(3, query);
+            stm.setString(4, query);
+            ResultSet rst = stm.executeQuery();
+            ArrayList<MemberDTO> members = new ArrayList<>();
+
+            while (rst.next()){
+                String id = rst.getString("id");
+                String name = rst.getString("name");
+                String address = rst.getString("address");
+                String contact = rst.getString("contact");
+                MemberDTO memberDTO = new MemberDTO(id, name, address, contact);
+                members.add(memberDTO);
+            }
+
+            response.setContentType("application/json");
+            JsonbBuilder.create().toJson(members, response.getWriter());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to fetch members");
+        }
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.getWriter().println("members doPost()");
