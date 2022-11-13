@@ -10,10 +10,7 @@ import lk.ijse.dep9.util.HttpServlet2;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 
 @WebServlet(name = "MemberServlet", value = "/members/*", loadOnStartup = 0)
@@ -38,6 +35,39 @@ public class MemberServlet extends HttpServlet2 {
                 String name = rst.getString("name");
                 String address = rst.getString("address");
                 String contact = rst.getString("contact");
+                MemberDTO memberDTO = new MemberDTO(id, name, address, contact);
+                members.add(memberDTO);
+            }
+
+            response.setContentType("application/json");
+            JsonbBuilder.create().toJson(members, response.getWriter());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to fetch members");
+        }
+    }
+
+    private void loadAllPaginatedMembers(int size, int page, HttpServletResponse response) throws IOException {
+        try(Connection connection = pool.getConnection()) {
+            Statement stmCount = connection.createStatement();
+            String sql = "SELECT COUNT(id) FROM member";
+            ResultSet rst1 = stmCount.executeQuery(sql);
+            rst1.next();
+            int totalMembers = rst1.getInt(1);
+            response.addIntHeader("X-Total-Count", totalMembers);
+
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM member LIMIT ? OFFSET ?");
+            stm.setInt(1, size);
+            stm.setInt(2, (page - 1) * size);
+            ResultSet rst2 = stm.executeQuery();
+
+            ArrayList<MemberDTO> members = new ArrayList<>();
+
+            while (rst2.next()){
+                String id = rst2.getString("id");
+                String name = rst2.getString("name");
+                String address = rst2.getString("address");
+                String contact = rst2.getString("contact");
                 MemberDTO memberDTO = new MemberDTO(id, name, address, contact);
                 members.add(memberDTO);
             }
