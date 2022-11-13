@@ -287,6 +287,55 @@ public class MemberServlet extends HttpServlet2 {
 
     @Override
     protected void doPatch(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.getWriter().println("members doPatch()");
+        if (request.getPathInfo() == null || request.getPathInfo().equals("/")){
+            response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+            return;
+        }
+
+        Matcher matcher = Pattern.compile("^/([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})/?$").matcher(request.getPathInfo());
+        if (matcher.matches()){
+            updateMember(matcher.group(1), request, response);
+        }else {
+            response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+        }
+    }
+
+    private void updateMember(String memberId, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try{
+            if(request.getContentType() == null || !request.getContentType().startsWith("application/json")){
+                throw new JsonbException("Invalid JSON");
+            }
+
+            MemberDTO member = JsonbBuilder.create().fromJson(request.getReader(), MemberDTO.class);
+
+            if (member.getId() == null || !memberId.equalsIgnoreCase(member.getId())){
+                throw new JsonbException("Id is empty or invalid");
+            }else if (member.getName() == null || !member.getName().matches("[A-Za-z ]+")){
+                throw new JsonbException("Name is empty or invalid");
+            } else if (member.getAddress() == null || !member.getAddress().matches("^[A-Za-z0-9| ,.:;#\\/\\\\-]+$")) {
+                throw new JsonbException("Address is empty or invalid");
+            } else if (member.getContact() == null || !member.getContact().matches("\\d{3}-\\d{7}")) {
+                throw new JsonbException("Contact number is empty or invalid");
+            }
+
+            try(Connection connection = pool.getConnection()) {
+                PreparedStatement stm = connection.prepareStatement("UPDATE member SET name=?, address=?, contact=? WHERE id=?");
+                stm.setString(1, member.getName());
+                stm.setString(2, member.getAddress());
+                stm.setString(3, member.getContact());
+                stm.setString(4, member.getId());
+
+                if(stm.executeUpdate() == 1){
+                    response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                }else{
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Member does not exist");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to update the member");
+            }
+        }catch(JsonbException e){
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+        }
     }
 }
