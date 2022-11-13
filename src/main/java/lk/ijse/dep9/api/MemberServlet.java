@@ -8,7 +8,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lk.ijse.dep9.dto.MemberDTO;
-import lk.ijse.dep9.util.HttpServlet2;
+import lk.ijse.dep9.api.util.HttpServlet2;
 
 import javax.sql.DataSource;
 import java.io.IOException;

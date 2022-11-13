@@ -1,4 +1,4 @@
-package lk.ijse.dep9.util;
+package lk.ijse.dep9.api.util;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;

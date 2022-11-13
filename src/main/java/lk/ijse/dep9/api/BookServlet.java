@@ -3,7 +3,7 @@ package lk.ijse.dep9.api;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
-import lk.ijse.dep9.util.HttpServlet2;
+import lk.ijse.dep9.api.util.HttpServlet2;
 
 import java.io.IOException;
 
