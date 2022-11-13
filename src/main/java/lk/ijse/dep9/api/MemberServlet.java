@@ -257,7 +257,32 @@ public class MemberServlet extends HttpServlet2 {
 
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.getWriter().println("members doDelete()");
+        if (request.getPathInfo() == null || request.getPathInfo().startsWith("/")){
+            response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+            return;
+        }
+
+        Matcher matcher = Pattern.compile("^/([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})/?$").matcher(request.getPathInfo());
+        if (matcher.matches()){
+            deleteMember(matcher.group(1), response);
+        }else {
+            response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+        }
+    }
+
+    private void deleteMember(String memberId, HttpServletResponse response){
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stm = connection.prepareStatement("DELETE FROM member WHERE id = ?");
+            stm.setString(1, memberId);
+            int affectedRows = stm.executeUpdate();
+            if (affectedRows == 0){
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Invalid member id");
+            }else{
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            }
+        } catch (SQLException | IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
