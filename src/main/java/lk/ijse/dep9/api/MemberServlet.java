@@ -108,6 +108,48 @@ public class MemberServlet extends HttpServlet2 {
         }
     }
 
+    private void searchPaginatedMembers(String query, int size, int page, HttpServletResponse response) throws IOException {
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stmCount = connection.prepareStatement("SELECT COUNT(id) FROM member WHERE id LIKE ? OR name LIKE ? OR address LIKE ? OR contact LIKE ?");
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM member WHERE id LIKE ? OR name LIKE ? OR address LIKE ? OR contact LIKE ? LIMIT ? OFFSET ?");
+
+            query = "%" + query + "%";
+            stmCount.setString(1, query);
+            stmCount.setString(2, query);
+            stmCount.setString(3, query);
+            stmCount.setString(4, query);
+            ResultSet rst1 = stmCount.executeQuery();
+            rst1.next();
+            int totalMembers = rst1.getInt(1);
+            response.addIntHeader("X-Total-Count", totalMembers);
+
+            stm.setString(1, query);
+            stm.setString(2, query);
+            stm.setString(3, query);
+            stm.setString(4, query);
+            stm.setInt(5, size);
+            stm.setInt(6, (page - 1) * size);
+            ResultSet rst2 = stm.executeQuery();
+
+            ArrayList<MemberDTO> members = new ArrayList<>();
+
+            while (rst2.next()){
+                String id = rst2.getString("id");
+                String name = rst2.getString("name");
+                String address = rst2.getString("address");
+                String contact = rst2.getString("contact");
+                MemberDTO memberDTO = new MemberDTO(id, name, address, contact);
+                members.add(memberDTO);
+            }
+
+            response.setContentType("application/json");
+            JsonbBuilder.create().toJson(members, response.getWriter());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to fetch members");
+        }
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.getWriter().println("members doPost()");
