@@ -150,6 +150,30 @@ public class MemberServlet extends HttpServlet2 {
         }
     }
 
+    private void getMemberDetails(String memberId, HttpServletResponse response) throws IOException {
+        try(Connection connection = pool.getConnection()) {
+            PreparedStatement stm = connection.prepareStatement("SELECT * FROM member WHERE id = ?");
+            stm.setString(1, memberId);
+            ResultSet rst = stm.executeQuery();
+
+            if (rst.next()){
+                String id = rst.getString("id");
+                String name = rst.getString("name");
+                String address = rst.getString("address");
+                String contact = rst.getString("contact");
+                MemberDTO memberDTO = new MemberDTO(id, name, address, contact);
+                response.setContentType("application/json");
+                JsonbBuilder.create().toJson(memberDTO, response.getWriter());
+            }else{
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Invalid member id");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to fetch the member details");
+        }
+    }
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.getWriter().println("members doPost()");
