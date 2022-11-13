@@ -5,6 +5,7 @@
 # License
 
 Copyright ©2022 Eranga Bandara. All Rights Reserved.
+License under the [MIT License](LICENSE.txt). 
 
 # Version
 
