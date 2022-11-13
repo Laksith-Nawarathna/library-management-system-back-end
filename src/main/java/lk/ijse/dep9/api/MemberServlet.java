@@ -12,6 +12,8 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @WebServlet(name = "MemberServlet", value = "/members/*", loadOnStartup = 0)
 public class MemberServlet extends HttpServlet2 {
@@ -20,7 +22,36 @@ public class MemberServlet extends HttpServlet2 {
     private DataSource pool;
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.getWriter().println("members doGet()");
+        if(request.getPathInfo() == null || request.getPathInfo().equals("/")){
+            String query = request.getParameter("q");
+            String size = request.getParameter("size");
+            String page = request.getParameter("page");
+
+            if (query != null && size != null && page != null){
+                if (!size.matches("\\d+") || !page.matches("\\d+")){
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid page or size");
+                }else {
+                    searchPaginatedMembers(query, Integer.parseInt(size), Integer.parseInt(page), response);
+                }
+            } else if (query != null) {
+                searchMembers(query, response);
+            } else if (size != null && page != null) {
+                if (!size.matches("\\d+") || !page.matches("\\d+")){
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid page or size");
+                }else {
+                    loadAllPaginatedMembers(Integer.parseInt(size), Integer.parseInt(page), response);
+                }
+            }else{
+                loadAllMembers(response);
+            }
+        }else{
+            Matcher matcher = Pattern.compile("^/([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})/?$").matcher(request.getPathInfo());
+            if (matcher.matches()){
+                getMemberDetails(matcher.group(1), response);
+            }else {
+                response.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED);
+            }
+        }
     }
 
     private void loadAllMembers(HttpServletResponse response) throws IOException {
