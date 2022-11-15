@@ -13,6 +13,8 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "IssueNoteServlet", value = "/issue-notes")
 public class IssueNoteServlet extends HttpServlet {
@@ -48,6 +50,10 @@ public class IssueNoteServlet extends HttpServlet {
             throw new JsonbException("Cannot issue more than 3 books");
         } else if (issueNote.getBooks().stream().anyMatch(isbn -> isbn == null || isbn.matches("^(\\d[\\d\\\\-]*\\d)$"))) {
             throw new JsonbException("Invalid ISBN in the books list");
+        }
+//        Duplicate finding
+        else if(issueNote.getBooks().stream().collect(Collectors.toSet()).size() != issueNote.getBooks().size()){
+            throw new JsonbException("Duplicate isbns are found");
         }
 
 //      Business validation
