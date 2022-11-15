@@ -39,15 +39,19 @@ public class IssueNoteServlet extends HttpServlet {
         }
     }
 
+//    Data validation
     private void createIssueNote(IssueNoteDTO issueNote, HttpServletResponse response) throws IOException {
         if(issueNote.getMemberId() == null || !issueNote.getMemberId().matches("^([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})$")){
             throw new JsonbException("Member id is empty or invalid");
         } else if (issueNote.getBooks().isEmpty()) {
             throw new JsonbException("Cannot place an issue note without books");  // handle erd total participation relation between issueNote
-        } else if (issueNote.getBooks().stream().anyMatch(isbn -> isbn.matches("([0-9][0-9\\\\-]*[0-9])"))) {
+        } else if (issueNote.getBooks().size() > 3) {
+            throw new JsonbException("Cannot issue more than 3 books");
+        } else if (issueNote.getBooks().stream().anyMatch(isbn -> isbn == null || isbn.matches("^(\\d[\\d\\\\-]*\\d)$"))) {
             throw new JsonbException("Invalid ISBN in the books list");
         }
 
+//      Business validation
         try(Connection connection = pool.getConnection()) {
             PreparedStatement stmMemberExist = connection.prepareStatement("SELECT * FROM member WHERE id = ?");
             stmMemberExist.setString(1, issueNote.getMemberId());
