@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @WebServlet(name = "IssueNoteServlet", value = "/issue-notes")
 public class IssueNoteServlet extends HttpServlet {
 
-    @Resource(lookup = "java:comp/env/jdbc/lms")
+    @Resource(lookup = "java:comp/env/jdbc/dep9_lms")
     private DataSource pool;
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -33,35 +33,37 @@ public class IssueNoteServlet extends HttpServlet {
                 throw new JsonbException("Invalid JSON");
             }
 
-            IssueNoteDTO issueNote = JsonbBuilder.create().fromJson(request.getReader(), IssueNoteDTO.class);
-            createIssueNote(issueNote, response);
+            IssueNoteDTO issueNoteDTO = JsonbBuilder.create().fromJson(request.getReader(), IssueNoteDTO.class);
+            createIssueNote(issueNoteDTO, response);
         }catch (JsonbException e){
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         }
     }
 
-//    Data validation
-    private void createIssueNote(IssueNoteDTO issueNote, HttpServletResponse response) throws IOException {
-        if(issueNote.getMemberId() == null || !issueNote.getMemberId().matches("^([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})$")){
+    private void createIssueNote(IssueNoteDTO issueNoteDTO, HttpServletResponse response) throws IOException {
+
+        /*  Data Validation  */
+
+        if(issueNoteDTO.getMemberId() == null || !issueNoteDTO.getMemberId().matches("^([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})$")){
             throw new JsonbException("Member id is empty or invalid");
-        } else if (issueNote.getBooks().isEmpty()) {
-            throw new JsonbException("Cannot place an issue note without books");  // handle erd total participation relation between issueNote
-        } else if (issueNote.getBooks().size() > 3) {
+        } else if (issueNoteDTO.getBooks().isEmpty()) {
+            throw new JsonbException("Cannot place an issue note without books");  // handle ERD total participation relation between issueNoteDTO
+        } else if (issueNoteDTO.getBooks().size() > 3) {
             throw new JsonbException("Cannot issue more than 3 books");
-        } else if (issueNote.getBooks().stream().anyMatch(isbn -> isbn == null || isbn.matches("^(\\d[\\d\\\\-]*\\d)$"))) {
+        } else if (issueNoteDTO.getBooks().stream().anyMatch(isbn -> isbn == null || !isbn.matches("^(\\d[\\d\\\\-]*\\d)$"))) {
             throw new JsonbException("Invalid ISBN in the books list");
         }
-//        Duplicate finding
-        else if(issueNote.getBooks().stream().collect(Collectors.toSet()).size() != issueNote.getBooks().size()){
-            throw new JsonbException("Duplicate isbns are found");
+        /*  Duplicates finding in issue note  */
+        else if(issueNoteDTO.getBooks().stream().collect(Collectors.toSet()).size() != issueNoteDTO.getBooks().size()){
+            throw new JsonbException("Duplicate isbn has been found");
         }
 
-//      Business validation
+      /*    Business validation     */
         try(Connection connection = pool.getConnection()) {
-            PreparedStatement stmMemberExist = connection.prepareStatement("SELECT * FROM member WHERE id = ?");
-            stmMemberExist.setString(1, issueNote.getMemberId());
+            PreparedStatement stmMemberExist = connection.prepareStatement("SELECT id FROM member WHERE id = ?");
+            stmMemberExist.setString(1, issueNoteDTO.getMemberId());
             if(!stmMemberExist.executeQuery().next()){
-                throw new JsonbException("Member does not exist");
+                throw new JsonbException("Member does not exist within the database");
             }
 
             PreparedStatement stm = connection.prepareStatement("SELECT b.title, b.copies, COUNT(r.isbn) AS issued_book_count ,((b.copies - COUNT(r.isbn) > 0)) AS availability FROM book b\n" +
@@ -75,14 +77,14 @@ public class IssueNoteServlet extends HttpServlet {
                     "         INNER JOIN issue_note `in` on ii.issue_id = `in`.id\n" +
                     "WHERE `in`.member_id = ? AND b.isbn = ?");
 
-            stm2.setString(1, issueNote.getMemberId());
+            stm2.setString(1, issueNoteDTO.getMemberId());
 
-            for (String isbn : issueNote.getBooks()) {
+            for (String isbn : issueNoteDTO.getBooks()) {
                 stm.setString(1, isbn);
                 stm2.setString(2, isbn);
                 ResultSet rst = stm.executeQuery();
                 ResultSet rst2 = stm2.executeQuery();
-                if(!rst.next()) throw new JsonbException("Book does not exist");
+                if(!rst.next()) throw new JsonbException(isbn + " book does not exist");
                 if (!rst.getBoolean("availability")){
                     throw new JsonbException(isbn + "is not available at the moment");
                 }
@@ -96,21 +98,21 @@ public class IssueNoteServlet extends HttpServlet {
                     "    WHERE m.id = ? \n" +
                     "    GROUP BY m.id");
 
-            stmAvailable.setString(1, issueNote.getMemberId());
+            stmAvailable.setString(1, issueNoteDTO.getMemberId());
             ResultSet rst = stmAvailable.executeQuery();
             rst.next();
             int available = rst.getInt("available");
-            if (issueNote.getBooks().size() > available){
-                throw new JsonbException("Member can borrow only " + available + " books");
+            if (issueNoteDTO.getBooks().size() > available){
+                throw new JsonbException("Issue limit is exceeded, Member can borrow only " + available + " books");
             }
 
-//            Transaction for updating issu_item and issue_note tables
+            /*     Transaction for updating issue_item and issue_note tables   */
             try{
                 connection.setAutoCommit(false);
                 PreparedStatement stmIssueNote = connection.prepareStatement("INSERT INTO issue_note (date, member_id) VALUES (?, ?)",
                         Statement.RETURN_GENERATED_KEYS);
                 stmIssueNote.setDate(1, Date.valueOf(LocalDate.now()));
-                stmIssueNote.setString(2, issueNote.getMemberId());
+                stmIssueNote.setString(2, issueNoteDTO.getMemberId());
                 if (stmIssueNote.executeUpdate() != 1){
                     throw new SQLException("Failed to insert the issue note");
                 }
@@ -122,7 +124,7 @@ public class IssueNoteServlet extends HttpServlet {
                 PreparedStatement stmIssueItem = connection.prepareStatement("INSERT INTO issue_item (issue_id, isbn) VALUES (?, ?)");
                 stmIssueItem.setInt(1, issueNoteId);
 
-                for(String isbn: issueNote.getBooks()){
+                for(String isbn: issueNoteDTO.getBooks()){
                     stmIssueItem.setString(2, isbn);
                     if (stmIssueItem.executeUpdate() != 1){
                         throw new SQLException("Failed to insert an issue item");
@@ -131,11 +133,11 @@ public class IssueNoteServlet extends HttpServlet {
 
                 connection.commit();
 
-                issueNote.setDate(LocalDate.now());
-                issueNote.setId(issueNoteId);
+                issueNoteDTO.setDate(LocalDate.now());
+                issueNoteDTO.setId(issueNoteId);
                 response.setStatus(HttpServletResponse.SC_CREATED);
                 response.setContentType("application/json");
-                JsonbBuilder.create().toJson(issueNote, response.getWriter());
+                JsonbBuilder.create().toJson(issueNoteDTO, response.getWriter());
 
             }catch (Throwable t){
                 t.printStackTrace();
@@ -147,7 +149,7 @@ public class IssueNoteServlet extends HttpServlet {
 
         } catch (SQLException e) {
             e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to place the issue note");
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to place the issue note");     // server side error
         }
     }
 }
