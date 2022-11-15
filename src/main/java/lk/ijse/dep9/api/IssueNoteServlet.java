@@ -35,7 +35,13 @@ public class IssueNoteServlet extends HttpServlet {
         }
     }
 
-    private void createIssueNote(IssueNoteDTO issueNoteDTO, HttpServletResponse response){
-
+    private void createIssueNote(IssueNoteDTO issueNote, HttpServletResponse response){
+        if(issueNote.getMemberId() == null || !issueNote.getMemberId().matches("^([A-Fa-f0-9]{8}(-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12})$")){
+            throw new JsonbException("Member id is empty or invalid");
+        } else if (issueNote.getBooks().isEmpty()) {
+            throw new JsonbException("Cannot place an issue note without books");  // handle erd total participation relation between issueNote
+        } else if (issueNote.getBooks().stream().anyMatch(isbn -> isbn.matches("([0-9][0-9\\\\-]*[0-9])"))) {
+            throw new JsonbException("Invalid ISBN");
+        }
     }
 }
