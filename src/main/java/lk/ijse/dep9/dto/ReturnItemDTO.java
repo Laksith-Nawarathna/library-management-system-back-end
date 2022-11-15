@@ -10,6 +10,6 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReturnItemDTO implements Serializable {
-    private String issueNoteId;
+    private Integer issueNoteId;
     private String isbn;
 }
