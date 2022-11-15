@@ -56,6 +56,12 @@
             <artifactId>yasson</artifactId>
             <version>3.0.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.0.31</version>
+        </dependency>
     </dependencies>
 
     <build>
