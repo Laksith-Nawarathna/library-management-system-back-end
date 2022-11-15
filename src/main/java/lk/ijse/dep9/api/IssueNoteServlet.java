@@ -1,9 +1,12 @@
 package lk.ijse.dep9.api;
 
 import jakarta.annotation.Resource;
+import jakarta.json.bind.JsonbBuilder;
+import jakarta.json.bind.JsonbException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import lk.ijse.dep9.dto.IssueNoteDTO;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -20,10 +23,19 @@ public class IssueNoteServlet extends HttpServlet {
             return;
         }
 
-        if(request.getContentType() == null || !request.getContentType().startsWith("application/json")){
+        try{
+            if(request.getContentType() == null || !request.getContentType().startsWith("application/json")){
+                throw new JsonbException("Invalid JSON");
+            }
+
+            IssueNoteDTO issueNote = JsonbBuilder.create().fromJson(request.getReader(), IssueNoteDTO.class);
+            createIssueNote(issueNote, response);
+        }catch (JsonbException e){
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON");
-            return;
         }
+    }
+
+    private void createIssueNote(IssueNoteDTO issueNoteDTO, HttpServletResponse response){
 
     }
 }
