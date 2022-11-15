@@ -69,13 +69,24 @@ public class IssueNoteServlet extends HttpServlet {
                     "    LEFT OUTER JOIN `return` r ON NOT(ii.issue_id = r.issue_id and ii.isbn = r.isbn)\n" +
                     "    WHERE b.isbn = ? GROUP BY b.isbn");
 
+            PreparedStatement stm2 = connection.prepareStatement("SELECT *, b.title FROM issue_item ii\n" +
+                    "         INNER JOIN `return` r ON NOT (ii.issue_id = r.issue_id and ii.isbn = r.isbn)\n" +
+                    "         INNER JOIN book b on ii.isbn = b.isbn\n" +
+                    "         INNER JOIN issue_note `in` on ii.issue_id = `in`.id\n" +
+                    "WHERE `in`.member_id = ? AND b.isbn = ?");
+
+            stm2.setString(1, issueNote.getMemberId());
+
             for (String isbn : issueNote.getBooks()) {
                 stm.setString(1, isbn);
+                stm2.setString(2, isbn);
                 ResultSet rst = stm.executeQuery();
+                ResultSet rst2 = stm2.executeQuery();
                 if(!rst.next()) throw new JsonbException("Book does not exist");
                 if (!rst.getBoolean("availability")){
                     throw new JsonbException(isbn + "is not available at the moment");
                 }
+                if (rst2.next()) throw new JsonbException("Book has been already issued to the same member");
             }
 
             PreparedStatement stmAvailable = connection.prepareStatement("SELECT m.name, 3 - COUNT(r.issue_id) AS available FROM issue_note\n" +
@@ -110,6 +121,7 @@ public class IssueNoteServlet extends HttpServlet {
 
                 PreparedStatement stmIssueItem = connection.prepareStatement("INSERT INTO issue_item (issue_id, isbn) VALUES (?, ?)");
                 stmIssueItem.setInt(1, issueNoteId);
+
                 for(String isbn: issueNote.getBooks()){
                     stmIssueItem.setString(2, isbn);
                     if (stmIssueItem.executeUpdate() != 1){
