@@ -6,9 +6,12 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import lk.ijse.dep9.dto.ReturnDTO;
+import lk.ijse.dep9.dto.ReturnItemDTO;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "ReturnServlet", value = "/returns/*")
 public class ReturnServlet extends HttpServlet {
@@ -45,6 +48,8 @@ public class ReturnServlet extends HttpServlet {
             item.getIssueNoteId() == null || item.getIsbn() == null || !item.getIsbn().matches("([0-9][0-9\\\\-]*[0-9])"))) {
             throw new JsonbException("Some items are invalid");
         }
+        Set<ReturnItemDTO> returnItems = returnDTO.getReturnItems().stream().collect(Collectors.toSet());
+
 
 
     }
