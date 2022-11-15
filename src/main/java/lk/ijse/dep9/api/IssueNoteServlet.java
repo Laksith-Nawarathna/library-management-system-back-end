@@ -16,7 +16,7 @@ import java.time.LocalDate;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-@WebServlet(name = "IssueNoteServlet", value = "/issue-notes")
+@WebServlet(name = "IssueNoteServlet", value = "/issue-notes/*")
 public class IssueNoteServlet extends HttpServlet {
 
     @Resource(lookup = "java:comp/env/jdbc/dep9_lms")
