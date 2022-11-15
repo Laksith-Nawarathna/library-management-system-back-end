@@ -7,13 +7,12 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
 import lk.ijse.dep9.dto.IssueNoteDTO;
+import lombok.Data;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDate;
 
 @WebServlet(name = "IssueNoteServlet", value = "/issue-notes")
 public class IssueNoteServlet extends HttpServlet {
@@ -86,6 +85,46 @@ public class IssueNoteServlet extends HttpServlet {
             int available = rst.getInt("available");
             if (issueNote.getBooks().size() > available){
                 throw new JsonbException("Member can borrow only " + available + " books");
+            }
+
+//            Transaction for updating issu_item and issue_note tables
+            try{
+                connection.setAutoCommit(false);
+                PreparedStatement stmIssueNote = connection.prepareStatement("INSERT INTO issue_note (date, member_id) VALUES (?, ?)",
+                        Statement.RETURN_GENERATED_KEYS);
+                stmIssueNote.setDate(1, Date.valueOf(LocalDate.now()));
+                stmIssueNote.setString(2, issueNote.getMemberId());
+                if (stmIssueNote.executeUpdate() != 1){
+                    throw new SQLException("Failed to insert the issue note");
+                }
+
+                ResultSet generatedKeys = stmIssueNote.getGeneratedKeys();
+                generatedKeys.next();
+                int issueNoteId = generatedKeys.getInt(1);
+
+                PreparedStatement stmIssueItem = connection.prepareStatement("INSERT INTO issue_item (issue_id, isbn) VALUES (?, ?)");
+                stmIssueItem.setInt(1, issueNoteId);
+                for(String isbn: issueNote.getBooks()){
+                    stmIssueItem.setString(2, isbn);
+                    if (stmIssueItem.executeUpdate() != 1){
+                        throw new SQLException("Failed to insert an issue item");
+                    }
+                }
+
+                connection.commit();
+
+                issueNote.setDate(LocalDate.now());
+                issueNote.setId(issueNoteId);
+                response.setStatus(HttpServletResponse.SC_CREATED);
+                response.setContentType("application/json");
+                JsonbBuilder.create().toJson(issueNote, response.getWriter());
+
+            }catch (Throwable t){
+                t.printStackTrace();
+                connection.rollback();
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to place the issue-note");
+            }finally {
+                connection.setAutoCommit(true);
             }
 
         } catch (SQLException e) {
