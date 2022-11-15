@@ -9,4 +9,20 @@
         <res-auth>Container</res-auth>
         <res-type>javax.sql.DataSource</res-type>
     </resource-ref>
+
+    <filter>
+        <filter-name>cors-filter</filter-name>
+        <filter-class>lk.ijse.dep9.api.filter.CorsFilter</filter-class>
+
+        <init-param>
+            <param-name>origins</param-name>
+            <param-value>http://localhost</param-value>
+        </init-param>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>cors-filter</filter-name>
+        <url-pattern>/members/*</url-pattern>
+        <url-pattern>/books/*</url-pattern>
+    </filter-mapping>
 </web-app>
