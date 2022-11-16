@@ -6,6 +6,7 @@ import jakarta.json.bind.JsonbException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
+import lk.ijse.dep9.api.util.HttpServlet2;
 import lk.ijse.dep9.dto.IssueNoteDTO;
 import lombok.Data;
 
@@ -17,7 +18,7 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 @WebServlet(name = "IssueNoteServlet", value = "/issue-notes/*")
-public class IssueNoteServlet extends HttpServlet {
+public class IssueNoteServlet extends HttpServlet2 {
 
     @Resource(lookup = "java:comp/env/jdbc/dep9_lms")
     private DataSource pool;
