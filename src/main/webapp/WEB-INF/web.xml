@@ -5,7 +5,7 @@
          version="5.0">
     
     <resource-ref>
-        <res-ref-name>jdbc/dep9_lms</res-ref-name>
+        <res-ref-name>jdbc/lms</res-ref-name>
         <res-auth>Container</res-auth>
         <res-type>javax.sql.DataSource</res-type>
     </resource-ref>

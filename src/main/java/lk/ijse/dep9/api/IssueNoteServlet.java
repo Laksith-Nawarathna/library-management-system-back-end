@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @WebServlet(name = "IssueNoteServlet", value = "/issue-notes/*")
 public class IssueNoteServlet extends HttpServlet2 {
 
-    @Resource(lookup = "java:comp/env/jdbc/dep9_lms")
+    @Resource(lookup = "java:comp/env/jdbc/lms")
     private DataSource pool;
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -72,19 +72,19 @@ public class IssueNoteServlet extends HttpServlet2 {
                     "    LEFT OUTER JOIN `return` r ON NOT(ii.issue_id = r.issue_id and ii.isbn = r.isbn)\n" +
                     "    WHERE b.isbn = ? GROUP BY b.isbn");
 
-            PreparedStatement stm2 = connection.prepareStatement("SELECT *, b.title FROM issue_item ii\n" +
+            PreparedStatement stmDuplicateExist = connection.prepareStatement("SELECT *, b.title FROM issue_item ii\n" +
                     "         INNER JOIN `return` r ON NOT (ii.issue_id = r.issue_id and ii.isbn = r.isbn)\n" +
                     "         INNER JOIN book b on ii.isbn = b.isbn\n" +
                     "         INNER JOIN issue_note `in` on ii.issue_id = `in`.id\n" +
                     "WHERE `in`.member_id = ? AND b.isbn = ?");
 
-            stm2.setString(1, issueNoteDTO.getMemberId());
+            stmDuplicateExist.setString(1, issueNoteDTO.getMemberId());
 
             for (String isbn : issueNoteDTO.getBooks()) {
                 stm.setString(1, isbn);
-                stm2.setString(2, isbn);
+                stmDuplicateExist.setString(2, isbn);
                 ResultSet rst = stm.executeQuery();
-                ResultSet rst2 = stm2.executeQuery();
+                ResultSet rst2 = stmDuplicateExist.executeQuery();
                 if(!rst.next()) throw new JsonbException(isbn + " book does not exist");
                 if (!rst.getBoolean("availability")){
                     throw new JsonbException(isbn + "is not available at the moment");

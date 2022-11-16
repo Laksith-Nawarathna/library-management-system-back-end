@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @WebServlet(name = "ReturnServlet", value = "/returns/*")
 public class ReturnServlet extends HttpServlet2 {
 
-    @Resource(lookup = "java:comp/env/jdbc/dep9_lms")
+    @Resource(lookup = "java:comp/env/jdbc/lms")
     private DataSource pool;
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
